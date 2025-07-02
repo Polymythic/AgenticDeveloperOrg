@@ -1,10 +1,25 @@
 # Multi-Agent Software Development System
 
-A Docker-based multi-agent system for collaborative software development with Slack communication, SQLite state management, and GitHub integration.
+A Docker-based multi-agent system for **end-to-end software development workflow** with Slack communication, SQLite state management, and GitHub integration.
+
+## 🎯 Project Vision
+
+**Goal**: Enable project owners to propose new requirements and specifications in Slack (including screenshots), automatically check them into GitHub, have coding agents generate code, create human-in-the-loop code reviews, and when approved, test, commit, and update all documentation.
+
+### 🔄 Complete Workflow Pipeline
+
+```
+Slack Requirements → GitHub Issues → Agent Collaboration → Human Review → Automated Testing → Deployment
+     ↓                    ↓                    ↓                    ↓                    ↓                    ↓
+1. Project owner posts  2. System creates     3. Agents coordinate 4. Human approves    5. Automated tests   6. Code deployed
+   requirements +        GitHub issues from    and generate code    or requests          run and validate    and docs updated
+   screenshots in        Slack messages        based on specs       changes              code quality
+   Slack channel
+```
 
 ## 🎯 Project Overview
 
-This system implements a **generic agent architecture** where agent personalities and capabilities are defined through configuration rather than hardcoded classes. The system supports multiple specialized agents (Code Reviewer, Security Analyst, Performance Optimizer, etc.) that can collaborate on software development tasks.
+This system implements a **generic agent architecture** where agent personalities and capabilities are defined through configuration rather than hardcoded classes. The system supports multiple specialized agents that collaborate on software development tasks through a complete workflow pipeline.
 
 ### 🧠 Memory Storage Strategy
 
@@ -63,6 +78,7 @@ This logic is implemented in the agent's `_store_task_memory` method. In the fut
 - **Slack Integration**: Agents communicate and collaborate through Slack channels
 - **GitHub Integration**: Agents can commit code and review PRs as separate entities
 - **Docker Deployment**: Easy containerization and scaling of agents
+- **End-to-End Workflow**: Complete pipeline from requirements to deployment
 
 ## Architecture
 
@@ -78,7 +94,7 @@ This logic is implemented in the agent's `_store_task_memory` method. In the fut
 │   ├── models.py          # Pydantic data models
 │   └── config.py          # Configuration management
 ├── docker/                # Docker configuration
-├── integrations/          # Slack and GitHub integrations (future)
+├── integrations/          # Slack and GitHub integrations
 ├── prompts/               # Implementation prompts and guides
 └── config.yaml           # Agent personalities and system config
 ```
@@ -114,8 +130,7 @@ This logic is implemented in the agent's `_store_task_memory` method. In the fut
 
 6. **Run tests**:
    ```bash
-   python test_agent.py
-   python test_generic_agents.py
+   python test_suite.py
    ```
 
 7. **Deploy with Docker** (optional):
@@ -152,7 +167,7 @@ agents:
     # LLM Configuration
     llm_provider: "ollama"  # ollama, openai, claude, gemini
     llm_deployment: "local"  # local, cloud
-    llm_model: "llama2"  # Specific model name
+    llm_model: "gemma3"  # Specific model name
     llm_base_url: "http://localhost:11434"  # For local Ollama
 ```
 
@@ -226,7 +241,7 @@ llm_base_url: "http://localhost:11434"
 ```yaml
 llm_provider: "claude"
 llm_deployment: "cloud"
-llm_model: "claude-3-sonnet-20240229"
+llm_model: "claude-3-haiku-20240307"
 # API key set via ANTHROPIC_API_KEY environment variable
 ```
 
@@ -267,24 +282,26 @@ Agents communicate through:
 - Docker containerization with health checks
 - Three agent types: Code Reviewer, Security Analyst, Performance Optimizer
 
-### 🔄 **Phase 2: Enhanced Memory Storage** (In Progress)
+### ✅ **Phase 2: Enhanced Memory Storage** (Complete)
 - Hierarchical memory architecture (Working, Episodic, Semantic)
 - Memory importance scoring and decay mechanisms
 - Semantic search and memory relationships
 - Inter-agent memory sharing and collaboration
 - Context-aware memory retrieval
+- Multi-provider LLM abstraction layer
 
-### 📋 **Phase 3: Slack Integration** (Planned)
-- Real-time agent communication via Slack
-- Channel-based collaboration
-- Message threading and context preservation
-- Agent personality expression in conversations
+### 🔄 **Phase 3: End-to-End Workflow Orchestration** (In Progress)
+- **Slack Integration**: Requirements intake and file upload handling
+- **Workflow Engine**: Task queue and agent coordination system
+- **GitHub Integration**: Repository management and code collaboration
+- **Human-in-the-Loop**: Approval gates and review processes
+- **New Agent Types**: Requirements Analyst, Code Generator, Test Generator, Documentation Writer
 
-### 📋 **Phase 4: GitHub Integration** (Planned)
-- Code repository monitoring and analysis
-- Automated code reviews and suggestions
-- Pull request collaboration
-- Commit history analysis and learning
+### 📋 **Phase 4: Advanced Features** (Planned)
+- **Automated Testing**: Test generation and execution
+- **Deployment Pipeline**: CI/CD integration
+- **Monitoring & Analytics**: Performance tracking and insights
+- **Advanced Workflows**: Complex multi-step processes
 
 ## API Examples
 
@@ -350,4 +367,23 @@ curl -X POST "http://localhost:8000/agents/performance_optimizer/tasks" \
     "description": "How can I optimize database queries?",
     "parameters": {"context": "Performance discussion"}
   }'
-``` 
+```
+
+## Test Suite and Quality Assurance
+
+- The project includes a comprehensive test suite (`test_suite.py`) that covers environment, configuration, database, LLM providers, API endpoints, agent functionality, code review, and memory system.
+- **Quota/rate limit errors (e.g., HTTP 429, quota exceeded) are treated as warnings, not errors.** These are counted as 'skipped' tests and are clearly shown as warnings in the test report.
+- The test suite should be run frequently to ensure no regressions. All tests must pass (with only quota/rate limit issues as warnings) before merging or deploying.
+- The test report is saved to `test_report.txt` after each run, summarizing passed, failed, skipped tests, and warnings.
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run the test suite: `python test_suite.py`
+5. Submit a pull request
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. 
