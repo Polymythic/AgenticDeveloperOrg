@@ -201,11 +201,16 @@ class ClaudeClient(LLMClient):
         
         # Convert messages to Claude format
         claude_messages = []
+        system_message = None
+        
         for msg in messages:
-            claude_messages.append({
-                "role": msg.role,
-                "content": msg.content
-            })
+            if msg.role == "system":
+                system_message = msg.content
+            else:
+                claude_messages.append({
+                    "role": msg.role,
+                    "content": msg.content
+                })
         
         payload = {
             "model": self.config.model,
@@ -213,6 +218,10 @@ class ClaudeClient(LLMClient):
             "max_tokens": max_tokens or self.config.max_tokens,
             "temperature": temperature or self.config.temperature
         }
+        
+        # Add system message as top-level parameter if present
+        if system_message:
+            payload["system"] = system_message
         
         headers = {
             "x-api-key": self.api_key,

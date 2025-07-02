@@ -46,6 +46,38 @@ async def test_llm_abstraction():
             "model": "claude-3-sonnet-20240229",
             "api_key": os.getenv("ANTHROPIC_API_KEY"),
             "description": "Anthropic Claude"
+        },
+        {
+            "name": "claude_test_alt",
+            "provider": "claude",
+            "deployment": "cloud",
+            "model": "claude-3-sonnet-20240229",
+            "api_key": os.getenv("ANTHROPIC_API_KEY"),
+            "description": "Anthropic Claude (Alternative Model)"
+        },
+        {
+            "name": "claude_test_simple",
+            "provider": "claude",
+            "deployment": "cloud",
+            "model": "claude-3-sonnet-20240229",
+            "api_key": os.getenv("ANTHROPIC_API_KEY"),
+            "description": "Anthropic Claude (Simple Model)"
+        },
+        {
+            "name": "claude_test_haiku",
+            "provider": "claude",
+            "deployment": "cloud",
+            "model": "claude-3-haiku-20240307",
+            "api_key": os.getenv("ANTHROPIC_API_KEY"),
+            "description": "Anthropic Claude Haiku"
+        },
+        {
+            "name": "gemini_test",
+            "provider": "gemini",
+            "deployment": "cloud",
+            "model": "gemini-1.5-pro",
+            "api_key": os.getenv("GOOGLE_API_KEY"),
+            "description": "Google Gemini 1.5 Pro"
         }
     ]
     

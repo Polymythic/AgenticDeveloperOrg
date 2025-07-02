@@ -60,10 +60,10 @@ agents:
     enabled: true
     memory_enabled: true
     max_context_length: 4000
-    # LLM Configuration - Example with Ollama
+    # LLM Configuration - Using Gemma3 with Ollama
     llm_provider: "ollama"  # ollama, openai, claude, gemini
     llm_deployment: "local"  # local, cloud
-    llm_model: "llama2"  # Ollama model name
+    llm_model: "gemma3"  # Ollama model name
     llm_base_url: "http://localhost:11434"  # Ollama server URL
 
   - name: "performance_optimizer"
