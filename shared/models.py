@@ -35,6 +35,12 @@ class AgentConfig(BaseModel):
     enabled: bool = True
     memory_enabled: bool = True
     max_context_length: int = 4000
+    # LLM configuration
+    llm_provider: str = "openai"  # ollama, openai, claude, gemini
+    llm_deployment: str = "cloud"  # local, cloud
+    llm_model: Optional[str] = None  # Specific model name (e.g., "llama2", "gpt-4", "claude-3-sonnet")
+    llm_api_key: Optional[str] = None  # API key for cloud providers
+    llm_base_url: Optional[str] = None  # Custom base URL (e.g., for local Ollama)
 
 
 class Message(BaseModel):

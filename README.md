@@ -58,6 +58,7 @@ This logic is implemented in the agent's `_store_task_memory` method. In the fut
 - **Generic Agent Architecture**: Single codebase supporting multiple agent personalities
 - **Configuration-Driven**: Agent personalities defined in YAML, no code changes needed
 - **Flexible Tool System**: Common tools that adapt based on agent personality
+- **Multi-Provider LLM Support**: Unified interface for OpenAI, Claude, Gemini, and Ollama
 - **Memory Management**: Hierarchical memory storage with learning capabilities
 - **Slack Integration**: Agents communicate and collaborate through Slack channels
 - **GitHub Integration**: Agents can commit code and review PRs as separate entities
@@ -148,6 +149,11 @@ agents:
     goal: "Ensure code security and prevent security vulnerabilities"
     memory_enabled: true
     max_context_length: 4000
+    # LLM Configuration
+    llm_provider: "ollama"  # ollama, openai, claude, gemini
+    llm_deployment: "local"  # local, cloud
+    llm_model: "llama2"  # Specific model name
+    llm_base_url: "http://localhost:11434"  # For local Ollama
 ```
 
 ## Environment Variables
@@ -157,12 +163,17 @@ The system uses environment variables for sensitive configuration. Copy `env.exa
 ### Required Variables
 - `OPENAI_API_KEY` - Your OpenAI API key for GPT models
 - `ANTHROPIC_API_KEY` - Your Anthropic API key for Claude models
+- `GOOGLE_API_KEY` - Your Google API key for Gemini models
 - `SECRET_KEY` - Secret key for security (change in production)
 
 ### Optional Variables
 - `APP_DEBUG` - Enable debug mode (true/false)
 - `API_PORT` - API server port (default: 8000)
 - `DATABASE_PATH` - Database file path
+- `DEFAULT_LLM_PROVIDER` - Default LLM provider (ollama, openai, claude, gemini)
+- `DEFAULT_LLM_DEPLOYMENT` - Default deployment (local, cloud)
+- `DEFAULT_LLM_MODEL` - Default model name
+- `OLLAMA_BASE_URL` - Ollama server URL (default: http://localhost:11434)
 - `SLACK_*` - Slack integration settings (Phase 3)
 - `GITHUB_*` - GitHub integration settings (Phase 4)
 
@@ -171,10 +182,59 @@ The system uses environment variables for sensitive configuration. Copy `env.exa
 # Copy env.example to .env and fill in your values
 OPENAI_API_KEY=sk-your-openai-key-here
 ANTHROPIC_API_KEY=sk-ant-your-anthropic-key-here
+GOOGLE_API_KEY=your-google-api-key-here
 SECRET_KEY=your-secret-key-change-this
 APP_DEBUG=true
 API_PORT=8000
+
+# LLM Configuration
+DEFAULT_LLM_PROVIDER=openai
+DEFAULT_LLM_DEPLOYMENT=cloud
+DEFAULT_LLM_MODEL=gpt-4
+OLLAMA_BASE_URL=http://localhost:11434
 ```
+
+## LLM Providers
+
+The system supports multiple LLM providers through a unified abstraction layer:
+
+### Supported Providers
+- **OpenAI** (GPT-3.5, GPT-4) - Cloud-based, requires API key
+- **Anthropic Claude** (Claude-3) - Cloud-based, requires API key  
+- **Google Gemini** (Gemini Pro) - Cloud-based, requires API key
+- **Ollama** (Llama2, CodeLlama, etc.) - Local deployment, no API key required
+
+### Configuration Examples
+
+#### OpenAI (Cloud)
+```yaml
+llm_provider: "openai"
+llm_deployment: "cloud"
+llm_model: "gpt-4"
+# API key set via OPENAI_API_KEY environment variable
+```
+
+#### Ollama (Local)
+```yaml
+llm_provider: "ollama"
+llm_deployment: "local"
+llm_model: "llama2"
+llm_base_url: "http://localhost:11434"
+```
+
+#### Claude (Cloud)
+```yaml
+llm_provider: "claude"
+llm_deployment: "cloud"
+llm_model: "claude-3-sonnet-20240229"
+# API key set via ANTHROPIC_API_KEY environment variable
+```
+
+### Features
+- **Conversation History**: Automatic tracking of conversation context
+- **Fallback Support**: Graceful fallback to personality-based responses if LLM fails
+- **Provider Mixing**: Different agents can use different providers
+- **Local/Cloud Mixing**: Some agents can use local Ollama, others cloud providers
 
 ## Agent Communication & Memory
 

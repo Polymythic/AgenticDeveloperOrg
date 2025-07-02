@@ -38,6 +38,12 @@ agents:
     enabled: true
     memory_enabled: true
     max_context_length: 4000
+    # LLM Configuration (optional - defaults to OpenAI)
+    llm_provider: "openai"  # ollama, openai, claude, gemini
+    llm_deployment: "cloud"  # local, cloud
+    llm_model: "gpt-4"  # Specific model name
+    # llm_api_key: ""  # Set via environment variable OPENAI_API_KEY
+    # llm_base_url: ""  # Custom base URL (e.g., for local Ollama)
 
   - name: "security_analyst"
     model: "gpt-4"
@@ -54,6 +60,11 @@ agents:
     enabled: true
     memory_enabled: true
     max_context_length: 4000
+    # LLM Configuration - Example with Ollama
+    llm_provider: "ollama"  # ollama, openai, claude, gemini
+    llm_deployment: "local"  # local, cloud
+    llm_model: "llama2"  # Ollama model name
+    llm_base_url: "http://localhost:11434"  # Ollama server URL
 
   - name: "performance_optimizer"
     model: "gpt-4"
@@ -70,6 +81,11 @@ agents:
     enabled: true
     memory_enabled: true
     max_context_length: 4000
+    # LLM Configuration - Example with Claude
+    llm_provider: "claude"  # ollama, openai, claude, gemini
+    llm_deployment: "cloud"  # local, cloud
+    llm_model: "claude-3-sonnet-20240229"  # Claude model name
+    # llm_api_key: ""  # Set via environment variable ANTHROPIC_API_KEY
 
 # Integration settings (configured via environment variables)
 # See env.example for required environment variables

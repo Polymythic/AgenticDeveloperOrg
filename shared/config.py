@@ -122,6 +122,19 @@ class ConfigManager:
         config = self.get_config()
         for agent in config.agents:
             if agent.name == agent_name:
+                # Set default LLM model if not specified
+                if agent.llm_model is None:
+                    agent.llm_model = agent.model
+                
+                # Set API keys from environment if not specified
+                if agent.llm_api_key is None:
+                    if agent.llm_provider == "openai":
+                        agent.llm_api_key = get_openai_api_key()
+                    elif agent.llm_provider == "claude":
+                        agent.llm_api_key = get_anthropic_api_key()
+                    elif agent.llm_provider == "gemini":
+                        agent.llm_api_key = os.getenv("GOOGLE_API_KEY", "")
+                
                 return agent
         return None
     

@@ -17,6 +17,7 @@ from shared.models import (
 )
 from database.models import CodeReview as DBCodeReview
 from database.memory_manager import memory_manager, MemoryType, MemoryCategory
+from shared.llm import llm_manager, LLMConfig, LLMMessage
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,34 @@ class GenericAgent(BaseAgent):
         super().__init__(agent_name)
         self.tools: Dict[str, Callable] = {}
         self._register_default_tools()
+        self._setup_llm_client()
         logger.info(f"Generic Agent '{self.agent_name}' initialized with personality: {self.config.personality}")
+    
+    def _setup_llm_client(self):
+        """Setup LLM client for this agent."""
+        try:
+            # Create LLM configuration
+            llm_config = LLMConfig(
+                provider=self.config.llm_provider,
+                deployment=self.config.llm_deployment,
+                model=self.config.llm_model,
+                api_key=self.config.llm_api_key,
+                base_url=self.config.llm_base_url,
+                max_tokens=self.config.max_context_length,
+                temperature=0.7
+            )
+            
+            # Register client with agent name as identifier
+            client_name = f"{self.agent_name}_llm"
+            llm_manager.register_client(client_name, llm_config)
+            self.llm_client_name = client_name
+            
+            logger.info(f"LLM client registered for {self.agent_name}: {self.config.llm_provider}/{self.config.llm_model}")
+            
+        except Exception as e:
+            logger.error(f"Failed to setup LLM client for {self.agent_name}: {e}")
+            # Fallback to personality-based responses
+            self.llm_client_name = None
     
     def _register_default_tools(self):
         """Register default tools that all agents can use."""
@@ -155,10 +183,30 @@ class GenericAgent(BaseAgent):
     
     async def _generate_personality_response(self, prompt: str, input_text: str, context: Optional[str] = None) -> str:
         """Generate a response based on the agent's personality."""
-        # This is where you would integrate with an actual AI model
-        # For now, we'll use personality-based response generation
+        # Try to use LLM if available
+        if hasattr(self, 'llm_client_name') and self.llm_client_name:
+            try:
+                # Create messages for LLM
+                messages = [
+                    LLMMessage(role="system", content=prompt),
+                    LLMMessage(role="user", content=input_text)
+                ]
+                
+                # Generate response using LLM
+                response = await llm_manager.generate_response(
+                    client_name=self.llm_client_name,
+                    messages=messages,
+                    conversation_id=f"{self.agent_name}_conversation",
+                    include_history=True
+                )
+                
+                return response
+                
+            except Exception as e:
+                logger.error(f"LLM generation failed for {self.agent_name}, falling back to personality-based: {e}")
+                # Fall back to personality-based responses
         
-        # Analyze the input to determine the type of response needed
+        # Fallback to personality-based response generation
         input_lower = input_text.lower()
         
         # Generate response based on personality and input type
