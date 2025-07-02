@@ -19,6 +19,7 @@ from shared.config import get_config
 from database.manager import init_database, get_db_manager
 from agents.manager import initialize_agents, shutdown_agents, get_agent_manager
 from database.memory_manager import memory_manager
+from integrations.slack_manager import SlackManager
 
 # Configure logging
 logging.basicConfig(
@@ -28,9 +29,14 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+# Global Slack manager instance
+slack_manager = None
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
+    global slack_manager
+    
     # Startup
     logger.info("Starting Multi-Agent Software Development System...")
     
@@ -42,6 +48,16 @@ async def lifespan(app: FastAPI):
         # Initialize agents
         await initialize_agents()
         logger.info("Agents initialized")
+        
+        # Initialize Slack integration
+        slack_manager = SlackManager()
+        agent_manager = await get_agent_manager()
+        await slack_manager.initialize(agent_manager)
+        logger.info("Slack integration initialized")
+        
+        # Start Slack integration
+        await slack_manager.start()
+        logger.info("Slack integration started")
         
         logger.info("Application startup complete")
         
@@ -55,6 +71,11 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down Multi-Agent Software Development System...")
     
     try:
+        # Stop Slack integration
+        if slack_manager:
+            await slack_manager.stop()
+            logger.info("Slack integration stopped")
+        
         await shutdown_agents()
         logger.info("Agents shutdown complete")
         
@@ -116,13 +137,18 @@ async def health_check():
                 agent_metadata=state["agent_metadata"]
             ))
         
+        # Check Slack integration health
+        slack_status = "disabled"
+        if slack_manager:
+            slack_status = "healthy" if slack_manager.is_healthy() else "unhealthy"
+        
         return HealthCheck(
             status="healthy" if db_health["status"] == "healthy" else "unhealthy",
             version=config.app.version,
             agents=agents,
             database_status=db_health["status"],
             integrations={
-                "slack": "disabled",
+                "slack": slack_status,
                 "github": "disabled"
             }
         )
@@ -325,6 +351,46 @@ async def get_configuration():
         
     except Exception as e:
         logger.error(f"Failed to get configuration: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/integrations/slack/status")
+async def get_slack_status():
+    """Get Slack integration status."""
+    try:
+        if not slack_manager:
+            return {
+                "enabled": False,
+                "initialized": False,
+                "running": False,
+                "error": "Slack manager not available"
+            }
+        
+        return slack_manager.get_status()
+        
+    except Exception as e:
+        logger.error(f"Failed to get Slack status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/integrations/slack/send")
+async def send_slack_message(channel: str, message: str, thread_ts: str = None):
+    """Send a message to a Slack channel."""
+    try:
+        if not slack_manager:
+            raise HTTPException(status_code=503, detail="Slack integration not available")
+        
+        success = await slack_manager.send_message(channel, message, thread_ts)
+        
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to send message to Slack")
+        
+        return {"success": True, "message": "Message sent to Slack"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to send Slack message: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

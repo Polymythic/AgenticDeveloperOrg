@@ -53,7 +53,7 @@ class IntegrationConfig(BaseModel):
     slack: Dict[str, Any] = {
         "enabled": os.getenv("SLACK_ENABLED", "false").lower() == "true",
         "bot_token": os.getenv("SLACK_BOT_TOKEN", ""),
-        "app_token": os.getenv("SLACK_APP_TOKEN", ""),
+        "webhook_url": os.getenv("SLACK_WEBHOOK_URL", ""),
         "channels": os.getenv("SLACK_CHANNELS", "").split(",") if os.getenv("SLACK_CHANNELS") else []
     }
     github: Dict[str, Any] = {

@@ -34,5 +34,5 @@ mypy==1.7.1
 gunicorn==21.2.0
 
 # Future integrations (for later phases)
-slack-sdk==3.26.1
+slack-sdk>=3.27.0
 # PyGithub==1.59.1 

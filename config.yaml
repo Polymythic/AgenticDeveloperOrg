@@ -92,7 +92,9 @@ agents:
 integrations:
   slack:
     enabled: false  # Set SLACK_ENABLED=true in .env to enable
-    # bot_token, app_token, channels configured via environment variables
+    bot_token: ""  # Set via SLACK_BOT_TOKEN environment variable
+    webhook_url: ""  # Set via SLACK_WEBHOOK_URL environment variable (optional)
+    channels: []  # Set via SLACK_CHANNELS environment variable (comma-separated)
   
   github:
     enabled: false  # Set GITHUB_ENABLED=true in .env to enable
