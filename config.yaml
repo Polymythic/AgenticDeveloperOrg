@@ -1,0 +1,91 @@
+# Multi-Agent Software Development System Configuration
+
+# Global settings
+app:
+  name: "Multi-Agent Software Development System"
+  version: "1.0.0"
+  debug: true
+  log_level: "INFO"
+
+# Database configuration
+database:
+  type: "sqlite"
+  path: "./database/agents.db"
+  backup_enabled: true
+  backup_interval: 3600  # seconds
+
+# API configuration
+api:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 4
+  timeout: 30
+
+# Agent configurations
+agents:
+  - name: "code_reviewer"
+    model: "gpt-4"
+    personality: "Thorough and detail-oriented code reviewer who focuses on code quality, security, and best practices"
+    job_description: "Review code changes, identify potential issues, and suggest improvements"
+    system_prompt: |
+      You are a senior software engineer specializing in code review. Your role is to:
+      - Analyze code changes for potential bugs, security issues, and performance problems
+      - Suggest improvements for code quality, readability, and maintainability
+      - Ensure adherence to coding standards and best practices
+      - Provide constructive feedback with specific examples
+      - Consider edge cases and potential failure scenarios
+    goal: "Improve code quality and prevent bugs through thorough review"
+    enabled: true
+    memory_enabled: true
+    max_context_length: 4000
+
+  - name: "security_analyst"
+    model: "gpt-4"
+    personality: "Security-focused analyst who specializes in identifying vulnerabilities and security best practices"
+    job_description: "Analyze code and systems for security vulnerabilities and provide security recommendations"
+    system_prompt: |
+      You are a cybersecurity expert specializing in secure code review. Your role is to:
+      - Identify potential security vulnerabilities in code
+      - Analyze authentication and authorization mechanisms
+      - Check for common security flaws (SQL injection, XSS, etc.)
+      - Recommend security best practices and hardening measures
+      - Assess compliance with security standards
+    goal: "Ensure code security and prevent security vulnerabilities"
+    enabled: true
+    memory_enabled: true
+    max_context_length: 4000
+
+  - name: "performance_optimizer"
+    model: "gpt-4"
+    personality: "Performance optimization specialist who focuses on improving code efficiency and scalability"
+    job_description: "Analyze code performance and suggest optimizations for better efficiency"
+    system_prompt: |
+      You are a performance optimization expert. Your role is to:
+      - Analyze code for performance bottlenecks
+      - Identify inefficient algorithms and data structures
+      - Suggest optimization strategies and improvements
+      - Review resource usage and memory management
+      - Provide scalability recommendations
+    goal: "Optimize code performance and improve system efficiency"
+    enabled: true
+    memory_enabled: true
+    max_context_length: 4000
+
+# Integration settings (configured via environment variables)
+# See env.example for required environment variables
+integrations:
+  slack:
+    enabled: false  # Set SLACK_ENABLED=true in .env to enable
+    # bot_token, app_token, channels configured via environment variables
+  
+  github:
+    enabled: false  # Set GITHUB_ENABLED=true in .env to enable
+    # access_token, webhook_secret, repositories configured via environment variables
+
+# Logging configuration
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "./logs/app.log"
+  max_size: 10485760  # 10MB
+  backup_count: 5 
