@@ -34,6 +34,25 @@ The system implements a **hierarchical memory architecture** with three main mem
 - **Inter-Agent Sharing**: Collaborative knowledge building
 - **Context Awareness**: Memory retrieval based on current context
 
+### 🧠 Memory Storage Decision Logic
+
+The system uses a programmatic, rule-based approach to decide how and when to store agent memories:
+
+- **Episodic Memory**: After every completed task, an episodic memory is stored summarizing the task type, description, parameters, and execution context (success/failure, timing, etc.).
+- **Semantic Memory**: If a task produces a significant result (e.g., code review, suggestions, or knowledge), semantic memories are stored:
+  - **Knowledge**: Key results or insights from the task (e.g., code review summary)
+  - **Solution**: Any actionable suggestions or solutions generated
+- **Importance Scoring**: Importance is set higher for failed tasks (episodic), and for significant knowledge or solutions (semantic). The score is currently fixed by rule, but can be made dynamic in the future.
+- **Confidence**: Set to 1.0 for all stored memories by default.
+- **Tags**: Each memory is tagged with the task type and relevant categories (e.g., 'code_review', 'suggestions').
+
+#### Example Storage Flow
+1. **Task completes** → Store episodic memory (task summary)
+2. **If result contains review/knowledge** → Store semantic memory (knowledge)
+3. **If result contains suggestions** → Store semantic memory (solution)
+
+This logic is implemented in the agent's `_store_task_memory` method. In the future, LLM-based or more dynamic decision logic can be added for more nuanced memory management.
+
 ## Features
 
 - **Generic Agent Architecture**: Single codebase supporting multiple agent personalities

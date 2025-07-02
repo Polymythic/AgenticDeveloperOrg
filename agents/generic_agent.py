@@ -16,6 +16,7 @@ from shared.models import (
     TaskRequest, TaskResponse, MessageType, AgentStatus
 )
 from database.models import CodeReview as DBCodeReview
+from database.memory_manager import memory_manager, MemoryType, MemoryCategory
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +82,10 @@ class GenericAgent(BaseAgent):
                 f"Completed task: {task_request.task_type}",
                 {"task_id": task_id, "execution_time": execution_time}
             )
+            
+            # Store memory about this task
+            if self.config.memory_enabled:
+                await self._store_task_memory(task_request, task_response, result)
             
             self.update_status(AgentStatus.IDLE)
             return task_response
@@ -497,4 +502,95 @@ class GenericAgent(BaseAgent):
                     session.commit()
                     
         except Exception as e:
-            logger.error(f"Failed to cache review: {e}") 
+            logger.error(f"Failed to cache review: {e}")
+    
+    async def summarize_memory(self, memory_type: Optional[str] = None, limit: int = 20) -> str:
+        """Summarize the agent's memory using the LLM for human readability."""
+        # Retrieve memories
+        memories = memory_manager.retrieve_memories(
+            agent_name=self.agent_name,
+            memory_type=memory_type,
+            limit=limit
+        )
+        if not memories:
+            return "No memories found."
+        # Build a summary prompt
+        memory_texts = [f"- {m['memory_type']} ({m['memory_category']}): {m['content']}" for m in memories]
+        prompt = (
+            f"You are an AI agent. Here is a list of your {memory_type or 'all'} memories:\n"
+            + "\n".join(memory_texts)
+            + "\n\nSummarize the main themes, knowledge, and patterns you have learned from these memories in a way that is human-readable."
+        )
+        # Use the agent's LLM to generate a summary
+        summary = await self.generate_response(prompt)
+        return summary
+    
+    async def _store_task_memory(self, task_request: TaskRequest, task_response: TaskResponse, result: Any) -> None:
+        """Store memory about a completed task."""
+        try:
+            # Store episodic memory about the task
+            task_content = f"Task: {task_request.task_type} - {task_request.description}"
+            if task_request.parameters:
+                task_content += f" | Parameters: {task_request.parameters}"
+            
+            task_context = f"Agent: {self.agent_name}, Execution time: {task_response.execution_time}s, Success: {task_response.success}"
+            
+            # Store the task memory
+            memory_manager.store_memory(
+                agent_name=self.agent_name,
+                memory_type=MemoryType.EPISODIC,
+                memory_category=MemoryCategory.TASK,
+                content=task_content,
+                context=task_context,
+                tags=[task_request.task_type, "task_execution"],
+                importance=0.7 if task_response.success else 0.9,  # Failed tasks are more important to remember
+                confidence=1.0
+            )
+            
+            # Store semantic memory about the result if it's significant
+            if task_response.success and result:
+                if isinstance(result, dict):
+                    # Extract key insights from the result
+                    if "review" in result:
+                        review_content = f"Code review result: {result.get('review', '')[:200]}..."
+                        memory_manager.store_memory(
+                            agent_name=self.agent_name,
+                            memory_type=MemoryType.SEMANTIC,
+                            memory_category=MemoryCategory.KNOWLEDGE,
+                            content=review_content,
+                            context=f"From {task_request.task_type} task",
+                            tags=[task_request.task_type, "code_review", "knowledge"],
+                            importance=0.8,
+                            confidence=1.0
+                        )
+                    
+                    if "suggestions" in result and result["suggestions"]:
+                        suggestions_content = f"Suggestions made: {', '.join(result['suggestions'])}"
+                        memory_manager.store_memory(
+                            agent_name=self.agent_name,
+                            memory_type=MemoryType.SEMANTIC,
+                            memory_category=MemoryCategory.SOLUTION,
+                            content=suggestions_content,
+                            context=f"From {task_request.task_type} task",
+                            tags=[task_request.task_type, "suggestions", "solutions"],
+                            importance=0.8,
+                            confidence=1.0
+                        )
+                else:
+                    # Store general result
+                    result_content = f"Task result: {str(result)[:200]}..."
+                    memory_manager.store_memory(
+                        agent_name=self.agent_name,
+                        memory_type=MemoryType.SEMANTIC,
+                        memory_category=MemoryCategory.KNOWLEDGE,
+                        content=result_content,
+                        context=f"From {task_request.task_type} task",
+                        tags=[task_request.task_type, "result", "knowledge"],
+                        importance=0.6,
+                        confidence=1.0
+                    )
+            
+            logger.info(f"Stored memory for {self.agent_name} task: {task_request.task_type}")
+            
+        except Exception as e:
+            logger.error(f"Failed to store task memory for {self.agent_name}: {e}") 
