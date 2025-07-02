@@ -114,4 +114,12 @@ class HealthCheck(BaseModel):
     version: str
     agents: List[AgentState]
     database_status: str
-    integrations: Dict[str, str] 
+    integrations: Dict[str, str]
+
+
+class MemorySummaryResponse(BaseModel):
+    agent_name: str
+    memory_type: Optional[str] = None
+    total_memories: int
+    summary: str
+    raw_memories: List[Dict[str, Any]] 

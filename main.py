@@ -13,11 +13,12 @@ from fastapi.responses import JSONResponse
 
 from shared.models import (
     TaskRequest, TaskResponse, CodeReviewRequest, CodeReviewResponse,
-    HealthCheck, AgentState
+    HealthCheck, AgentState, MemorySummaryResponse
 )
 from shared.config import get_config
 from database.manager import init_database, get_db_manager
 from agents.manager import initialize_agents, shutdown_agents, get_agent_manager
+from database.memory_manager import memory_manager
 
 # Configure logging
 logging.basicConfig(
@@ -324,6 +325,34 @@ async def get_configuration():
         
     except Exception as e:
         logger.error(f"Failed to get configuration: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/agents/{agent_name}/memory/summary", response_model=MemorySummaryResponse)
+async def summarize_agent_memory(agent_name: str, memory_type: str = None, limit: int = 20):
+    """Summarize an agent's memory for debugging/inspection."""
+    try:
+        agent_manager = await get_agent_manager()
+        agent = await agent_manager.get_agent(agent_name)
+        if not agent:
+            raise HTTPException(status_code=404, detail=f"Agent not found: {agent_name}")
+        # Retrieve raw memories
+        raw_memories = memory_manager.retrieve_memories(
+            agent_name=agent_name,
+            memory_type=memory_type,
+            limit=limit
+        )
+        # Get LLM summary
+        summary = await agent.summarize_memory(memory_type=memory_type, limit=limit)
+        return MemorySummaryResponse(
+            agent_name=agent_name,
+            memory_type=memory_type,
+            total_memories=len(raw_memories),
+            summary=summary,
+            raw_memories=raw_memories
+        )
+    except Exception as e:
+        logger.error(f"Failed to summarize memory for {agent_name}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

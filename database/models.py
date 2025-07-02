@@ -108,20 +108,53 @@ class Task(Base):
 
 
 class Memory(Base):
-    """Agent memory storage."""
+    """Hierarchical memory storage for agents."""
     __tablename__ = "memories"
     
     id = Column(Integer, primary_key=True, index=True)
     agent_id = Column(Integer, ForeignKey("agents.id"), nullable=False)
-    memory_type = Column(String(50), nullable=False)  # conversation, task, knowledge
+    
+    # Memory hierarchy
+    memory_type = Column(String(50), nullable=False)  # working, episodic, semantic
+    memory_category = Column(String(50), nullable=False)  # conversation, task, knowledge, pattern, solution
+    
+    # Content and context
     content = Column(Text, nullable=False)
-    importance = Column(Float, default=1.0)  # 0.0 to 1.0
+    context = Column(Text, nullable=True)  # Additional context for the memory
+    tags = Column(JSON, nullable=True)  # List of tags for categorization
+    
+    # Memory attributes
+    importance = Column(Float, default=0.5)  # 0.0 to 1.0, calculated dynamically
+    confidence = Column(Float, default=1.0)  # 0.0 to 1.0, how confident we are in this memory
+    access_count = Column(Integer, default=0)  # How many times this memory has been accessed
+    
+    # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)
     accessed_at = Column(DateTime, default=datetime.utcnow)
-    memory_metadata = Column(JSON, nullable=True)
+    last_consolidated = Column(DateTime, nullable=True)  # When this memory was last consolidated
+    
+    # Relationships and metadata
+    related_memories = Column(JSON, nullable=True)  # List of related memory IDs
+    memory_metadata = Column(JSON, nullable=True)  # Additional metadata
     
     # Relationships
     agent = relationship("Agent")
+
+
+class MemoryRelationship(Base):
+    """Relationships between memories for chaining and context."""
+    __tablename__ = "memory_relationships"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    source_memory_id = Column(Integer, ForeignKey("memories.id"), nullable=False)
+    target_memory_id = Column(Integer, ForeignKey("memories.id"), nullable=False)
+    relationship_type = Column(String(50), nullable=False)  # similar, related, contradicts, extends
+    strength = Column(Float, default=1.0)  # 0.0 to 1.0, strength of the relationship
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    source_memory = relationship("Memory", foreign_keys=[source_memory_id])
+    target_memory = relationship("Memory", foreign_keys=[target_memory_id])
 
 
 class CodeReview(Base):
