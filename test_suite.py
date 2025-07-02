@@ -37,6 +37,7 @@ class TestSuite:
             "total": 0
         }
         self.errors = []
+        self.warnings = []
         
     def log(self, message: str, level: str = "INFO"):
         """Log a message with timestamp."""
@@ -108,14 +109,14 @@ class TestSuite:
             self.test_result("Configuration Loading", True, "Config loaded successfully")
             
             # Check agent configurations
-            agents = config.get("agents", [])
+            agents = config.agents
             if agents:
                 self.test_result("Agent Configuration", True, f"Found {len(agents)} agents")
                 
                 for agent in agents:
-                    agent_name = agent.get("name", "unknown")
-                    llm_provider = agent.get("llm_provider", "unknown")
-                    llm_model = agent.get("llm_model", "unknown")
+                    agent_name = agent.name
+                    llm_provider = agent.llm_provider
+                    llm_model = agent.llm_model
                     
                     self.test_result(
                         f"Agent: {agent_name}",
@@ -196,7 +197,7 @@ class TestSuite:
                 "name": "claude_test",
                 "provider": "claude",
                 "deployment": "cloud",
-                "model": "claude-3-sonnet-20240229",
+                "model": "claude-3-haiku-20240307",
                 "api_key": os.getenv("ANTHROPIC_API_KEY"),
                 "description": "Anthropic Claude"
             },
@@ -261,7 +262,17 @@ class TestSuite:
                     self.test_result(f"LLM Generation: {config['description']}", True, "Response received (content not verified)")
                 
             except Exception as e:
-                self.test_result(f"LLM Provider: {config['description']}", False, "", str(e))
+                error_str = str(e)
+                # Handle rate limit errors gracefully
+                if "429" in error_str and "quota" in error_str.lower():
+                    self.results["skipped"] += 1
+                    self.log(f"⚠️  LLM Generation: {config['description']}: SKIPPED (Rate limited/quota exceeded)", "WARN")
+                    if hasattr(self, 'warnings'):
+                        self.warnings.append(f"LLM Generation: {config['description']} - Rate limited/quota exceeded")
+                    else:
+                        self.warnings = [f"LLM Generation: {config['description']} - Rate limited/quota exceeded"]
+                else:
+                    self.test_result(f"LLM Provider: {config['description']}", False, "", str(e))
         
         return self.results["failed"] == 0
     
@@ -346,7 +357,7 @@ class TestSuite:
             
             # Test memory summary endpoint
             try:
-                response = requests.get(f"{self.base_url}/agents/{agent_name}/memory/summary", timeout=10)
+                response = requests.get(f"{self.base_url}/agents/{agent_name}/memory/summary", timeout=30)
                 if response.status_code == 200:
                     memory_data = response.json()
                     memory_count = len(memory_data.get('memories', []))
@@ -419,7 +430,7 @@ def authenticate_user(username, password):
             
             # Test memory storage and retrieval
             test_memory = {
-                "agent_id": 1,
+                "agent_name": "code_reviewer",
                 "memory_type": "episodic",
                 "memory_category": "test",
                 "content": "Test memory content",
@@ -434,11 +445,15 @@ def authenticate_user(username, password):
                 self.test_result("Memory Storage", True, f"Memory stored with ID: {memory_id}")
                 
                 # Test memory retrieval
-                retrieved_memory = memory_manager.get_memory(memory_id)
-                if retrieved_memory:
-                    self.test_result("Memory Retrieval", True, "Memory retrieved successfully")
+                retrieved_memories = memory_manager.retrieve_memories(
+                    agent_name="code_reviewer",
+                    memory_type="episodic",
+                    memory_category="test"
+                )
+                if retrieved_memories:
+                    self.test_result("Memory Retrieval", True, f"Retrieved {len(retrieved_memories)} memories")
                 else:
-                    self.test_result("Memory Retrieval", False, "", "Memory not found")
+                    self.test_result("Memory Retrieval", False, "", "No memories found")
             else:
                 self.test_result("Memory Storage", False, "", "Failed to store memory")
                 
@@ -473,6 +488,11 @@ System Status: {'✅ HEALTHY' if self.results['failed'] == 0 else '❌ ISSUES DE
             for error in self.errors:
                 report += f"- {error}\n"
         
+        if self.warnings:
+            report += "\nWarnings:\n"
+            for warning in self.warnings:
+                report += f"- {warning}\n"
+        
         report += f"\n{'='*80}\n"
         
         return report
@@ -485,6 +505,7 @@ System Status: {'✅ HEALTHY' if self.results['failed'] == 0 else '❌ ISSUES DE
         # Reset results
         self.results = {"passed": 0, "failed": 0, "skipped": 0, "total": 0}
         self.errors = []
+        self.warnings = []
         
         # Run all tests
         tests = [

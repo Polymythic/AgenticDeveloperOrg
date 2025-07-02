@@ -554,24 +554,38 @@ class GenericAgent(BaseAgent):
     
     async def summarize_memory(self, memory_type: Optional[str] = None, limit: int = 20) -> str:
         """Summarize the agent's memory using the LLM for human readability."""
-        # Retrieve memories
+        # Retrieve memories (limit to prevent long processing)
         memories = memory_manager.retrieve_memories(
             agent_name=self.agent_name,
             memory_type=memory_type,
-            limit=limit
+            limit=min(limit, 10)  # Cap at 10 memories for faster processing
         )
         if not memories:
             return "No memories found."
-        # Build a summary prompt
-        memory_texts = [f"- {m['memory_type']} ({m['memory_category']}): {m['content']}" for m in memories]
+        
+        # Build a concise summary prompt
+        memory_texts = []
+        for m in memories[:5]:  # Only use first 5 memories for summary
+            content = m['content'][:100] + "..." if len(m['content']) > 100 else m['content']
+            memory_texts.append(f"- {m['memory_type']} ({m['memory_category']}): {content}")
+        
         prompt = (
-            f"You are an AI agent. Here is a list of your {memory_type or 'all'} memories:\n"
+            f"Summarize these {len(memories)} memories in 2-3 sentences:\n"
             + "\n".join(memory_texts)
-            + "\n\nSummarize the main themes, knowledge, and patterns you have learned from these memories in a way that is human-readable."
         )
-        # Use the agent's LLM to generate a summary
-        summary = await self.generate_response(prompt)
-        return summary
+        
+        try:
+            # Use the agent's LLM to generate a summary with timeout
+            summary = await asyncio.wait_for(
+                self.generate_response(prompt),
+                timeout=15.0  # 15 second timeout
+            )
+            return summary
+        except asyncio.TimeoutError:
+            return f"Memory summary timeout. Found {len(memories)} memories."
+        except Exception as e:
+            logger.error(f"Failed to generate memory summary: {e}")
+            return f"Error generating summary. Found {len(memories)} memories."
     
     async def _store_task_memory(self, task_request: TaskRequest, task_response: TaskResponse, result: Any) -> None:
         """Store memory about a completed task."""

@@ -84,7 +84,7 @@ agents:
     # LLM Configuration - Example with Claude
     llm_provider: "claude"  # ollama, openai, claude, gemini
     llm_deployment: "cloud"  # local, cloud
-    llm_model: "claude-3-sonnet-20240229"  # Claude model name
+    llm_model: "claude-3-haiku-20240307"  # Claude model name
     # llm_api_key: ""  # Set via environment variable ANTHROPIC_API_KEY
 
 # Integration settings (configured via environment variables)
