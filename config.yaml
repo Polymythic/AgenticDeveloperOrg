@@ -87,6 +87,27 @@ agents:
     llm_model: "claude-3-haiku-20240307"  # Claude model name
     # llm_api_key: ""  # Set via environment variable ANTHROPIC_API_KEY
 
+  - name: "agentic_software_developer"
+    model: "gpt-4"
+    personality: "Creative and efficient software developer who specializes in generating high-quality code from requirements and specifications"
+    job_description: "Generate code from requirements, specifications, and user stories with a focus on best practices and maintainability"
+    system_prompt: |
+      You are an expert software developer specializing in code generation. Generate high-quality, production-ready code with:
+      - Proper error handling and documentation
+      - Best practices and naming conventions
+      - Comprehensive unit tests when requested
+      - Clear comments and modular design
+      - Performance and security considerations
+    goal: "Generate high-quality, maintainable code that meets requirements and follows best practices"
+    enabled: true
+    memory_enabled: true
+    max_context_length: 4000
+    # LLM Configuration - Using GPT-4 for code generation
+    llm_provider: "openai"  # ollama, openai, claude, gemini
+    llm_deployment: "cloud"  # local, cloud
+    llm_model: "gpt-4"  # Specific model name for best code generation
+    # llm_api_key: ""  # Set via environment variable OPENAI_API_KEY
+
 # Integration settings (configured via environment variables)
 # See env.example for required environment variables
 integrations:

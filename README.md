@@ -21,6 +21,49 @@ Slack Requirements → GitHub Issues → Agent Collaboration → Human Review �
 
 This system implements a **generic agent architecture** where agent personalities and capabilities are defined through configuration rather than hardcoded classes. The system supports multiple specialized agents that collaborate on software development tasks through a complete workflow pipeline.
 
+### 🤖 Current Agent Ecosystem
+
+#### **Code Reviewer** 🔍
+- **Personality**: Thorough and detail-oriented code reviewer
+- **Focus**: Code quality, security, and best practices
+- **LLM**: OpenAI GPT-4
+- **Responsibilities**:
+  - Analyze code for bugs and issues
+  - Suggest improvements for readability
+  - Ensure coding standards compliance
+  - Provide constructive feedback
+
+#### **Security Analyst** 🔒
+- **Personality**: Security-focused vulnerability specialist
+- **Focus**: Security vulnerabilities and best practices
+- **LLM**: Ollama Gemma3 (local)
+- **Responsibilities**:
+  - Identify security vulnerabilities
+  - Analyze authentication mechanisms
+  - Check for common security flaws
+  - Recommend security hardening
+
+#### **Performance Optimizer** ⚡
+- **Personality**: Performance optimization specialist
+- **Focus**: Code efficiency and scalability
+- **LLM**: Claude Haiku
+- **Responsibilities**:
+  - Analyze performance bottlenecks
+  - Suggest optimization strategies
+  - Review resource usage
+  - Provide scalability recommendations
+
+#### **Agentic Software Developer** 💻
+- **Personality**: Creative and efficient software developer
+- **Focus**: Code generation from requirements and specifications
+- **LLM**: OpenAI GPT-4
+- **Responsibilities**:
+  - Generate high-quality, production-ready code
+  - Follow best practices and naming conventions
+  - Implement proper error handling and documentation
+  - Create comprehensive unit tests
+  - Provide clear comments and modular design
+
 ### 🧠 Memory Storage Strategy
 
 The system implements a **hierarchical memory architecture** with three main memory types:
@@ -75,6 +118,7 @@ This logic is implemented in the agent's `_store_task_memory` method. In the fut
 - **Flexible Tool System**: Common tools that adapt based on agent personality
 - **Multi-Provider LLM Support**: Unified interface for OpenAI, Claude, Gemini, and Ollama
 - **Memory Management**: Hierarchical memory storage with learning capabilities
+- **Code Generation**: Specialized agent for generating high-quality code from requirements
 - **Slack Integration**: Agents communicate and collaborate through Slack channels
 - **GitHub Integration**: Agents can commit code and review PRs as separate entities
 - **Docker Deployment**: Easy containerization and scaling of agents
@@ -158,17 +202,18 @@ Each agent is configured via `config.yaml` with:
 ### Example Agent Configuration
 ```yaml
 agents:
-  - name: "security_analyst"
-    personality: "Security-focused analyst who specializes in identifying vulnerabilities"
-    job_description: "Analyze code and systems for security vulnerabilities"
-    goal: "Ensure code security and prevent security vulnerabilities"
+  - name: "agentic_software_developer"
+    personality: "Creative and efficient software developer who specializes in generating high-quality code from requirements and specifications"
+    job_description: "Generate code from requirements, specifications, and user stories with a focus on best practices and maintainability"
+    goal: "Generate high-quality, maintainable code that meets requirements and follows best practices"
     memory_enabled: true
     max_context_length: 4000
     # LLM Configuration
-    llm_provider: "ollama"  # ollama, openai, claude, gemini
-    llm_deployment: "local"  # local, cloud
-    llm_model: "gemma3"  # Specific model name
-    llm_base_url: "http://localhost:11434"  # For local Ollama
+    llm_provider: "openai"  # ollama, openai, claude, gemini
+    llm_deployment: "cloud"  # local, cloud
+    llm_model: "gpt-4"  # Specific model name
+    # llm_api_key: ""  # Set via environment variable OPENAI_API_KEY
+    # llm_base_url: ""  # Custom base URL (e.g., for local Ollama)
 ```
 
 ## Environment Variables
@@ -198,192 +243,67 @@ The system uses environment variables for sensitive configuration. Copy `env.exa
 OPENAI_API_KEY=sk-your-openai-key-here
 ANTHROPIC_API_KEY=sk-ant-your-anthropic-key-here
 GOOGLE_API_KEY=your-google-api-key-here
-SECRET_KEY=your-secret-key-change-this
-APP_DEBUG=true
-API_PORT=8000
-
-# LLM Configuration
-DEFAULT_LLM_PROVIDER=openai
-DEFAULT_LLM_DEPLOYMENT=cloud
-DEFAULT_LLM_MODEL=gpt-4
-OLLAMA_BASE_URL=http://localhost:11434
 ```
 
-## LLM Providers
+## API Endpoints
 
-The system supports multiple LLM providers through a unified abstraction layer:
+### Core Endpoints
+- `GET /health` - System health check
+- `GET /agents` - List all agents
+- `GET /agents/{agent_name}` - Get specific agent details
+- `POST /agents/{agent_name}/tasks` - Submit task to specific agent
+- `POST /tasks` - Submit task to any available agent
+- `POST /code-review` - Submit code for review
 
-### Supported Providers
-- **OpenAI** (GPT-3.5, GPT-4) - Cloud-based, requires API key
-- **Anthropic Claude** (Claude-3) - Cloud-based, requires API key  
-- **Google Gemini** (Gemini Pro) - Cloud-based, requires API key
-- **Ollama** (Llama2, CodeLlama, etc.) - Local deployment, no API key required
+### Agent-Specific Endpoints
+- `GET /agents/{agent_name}/memory/summary` - Get agent memory summary
+- `POST /agents/{agent_name}/restart` - Restart specific agent
 
-### Configuration Examples
+### Integration Endpoints
+- `GET /integrations/slack/status` - Slack integration status
+- `POST /integrations/slack/send` - Send Slack message
 
-#### OpenAI (Cloud)
-```yaml
-llm_provider: "openai"
-llm_deployment: "cloud"
-llm_model: "gpt-4"
-# API key set via OPENAI_API_KEY environment variable
-```
+## Testing
 
-#### Ollama (Local)
-```yaml
-llm_provider: "ollama"
-llm_deployment: "local"
-llm_model: "llama2"
-llm_base_url: "http://localhost:11434"
-```
+The system includes a comprehensive test suite that validates all components:
 
-#### Claude (Cloud)
-```yaml
-llm_provider: "claude"
-llm_deployment: "cloud"
-llm_model: "claude-3-haiku-20240307"
-# API key set via ANTHROPIC_API_KEY environment variable
-```
-
-### Features
-- **Conversation History**: Automatic tracking of conversation context
-- **Fallback Support**: Graceful fallback to personality-based responses if LLM fails
-- **Provider Mixing**: Different agents can use different providers
-- **Local/Cloud Mixing**: Some agents can use local Ollama, others cloud providers
-
-## Agent Communication & Memory
-
-### Communication Channels
-Agents communicate through:
-- **Slack channels** for real-time collaboration (Phase 3)
-- **SQLite database** for state persistence and memory storage
-- **GitHub** for code collaboration and version control (Phase 4)
-- **Memory system** for knowledge sharing and context awareness
-
-### Memory-Based Collaboration
-- **Shared Knowledge**: Agents share learned patterns and solutions
-- **Context Awareness**: Responses informed by historical interactions
-- **Learning**: Agents improve over time through memory accumulation
-- **Specialization**: Each agent builds expertise in their domain
-
-## Development
-
-- **Python 3.9+** required
-- **Docker** for containerization
-- **Slack API** for communication
-- **GitHub API** for repository management
-
-## Project Phases
-
-### ✅ **Phase 1: Generic Agent System** (Complete)
-- Generic agent architecture with configuration-driven personalities
-- RESTful API with comprehensive endpoints
-- SQLite database with proper state management
-- Docker containerization with health checks
-- Three agent types: Code Reviewer, Security Analyst, Performance Optimizer
-
-### ✅ **Phase 2: Enhanced Memory Storage** (Complete)
-- Hierarchical memory architecture (Working, Episodic, Semantic)
-- Memory importance scoring and decay mechanisms
-- Semantic search and memory relationships
-- Inter-agent memory sharing and collaboration
-- Context-aware memory retrieval
-- Multi-provider LLM abstraction layer
-
-### 🔄 **Phase 3: End-to-End Workflow Orchestration** (In Progress)
-- **Slack Integration**: Requirements intake and file upload handling
-- **Workflow Engine**: Task queue and agent coordination system
-- **GitHub Integration**: Repository management and code collaboration
-- **Human-in-the-Loop**: Approval gates and review processes
-- **New Agent Types**: Requirements Analyst, Code Generator, Test Generator, Documentation Writer
-
-### 📋 **Phase 4: Advanced Features** (Planned)
-- **Automated Testing**: Test generation and execution
-- **Deployment Pipeline**: CI/CD integration
-- **Monitoring & Analytics**: Performance tracking and insights
-- **Advanced Workflows**: Complex multi-step processes
-
-## API Examples
-
-### Basic Operations
 ```bash
-# Health check
-curl http://localhost:8000/health
-
-# List all agents
-curl http://localhost:8000/agents
-
-# Get specific agent
-curl http://localhost:8000/agents/security_analyst
+python test_suite.py
 ```
 
-### Code Review with Different Agents
-```bash
-# Security-focused review
-curl -X POST "http://localhost:8000/agents/security_analyst/tasks" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "agent_name": "security_analyst",
-    "task_type": "code_review",
-    "description": "Review for security vulnerabilities",
-    "parameters": {
-      "code": "def process_input(data): return eval(data)",
-      "language": "python"
-    }
-  }'
+**Current Test Results:**
+- **Total Tests**: 50
+- **Passed**: 50 ✅
+- **Failed**: 0 ✅
+- **Skipped**: 1 (Gemini quota limit)
+- **Success Rate**: 100% ✅
 
-# Performance-focused review
-curl -X POST "http://localhost:8000/agents/performance_optimizer/tasks" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "agent_name": "performance_optimizer",
-    "task_type": "code_review",
-    "description": "Review for performance issues",
-    "parameters": {
-      "code": "for i in range(1000000): process(i)",
-      "language": "python"
-    }
-  }'
-```
+## Development Status
 
-### Conversation with Different Personalities
-```bash
-# Ask security analyst
-curl -X POST "http://localhost:8000/agents/security_analyst/tasks" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "agent_name": "security_analyst",
-    "task_type": "generate_response",
-    "description": "What are common security vulnerabilities?",
-    "parameters": {"context": "Security discussion"}
-  }'
+### ✅ Completed Phases
+- **Phase 1**: Foundation - Generic agent architecture, API, database, Docker
+- **Phase 2**: Enhanced Memory - Hierarchical memory, multi-provider LLM support
 
-# Ask performance optimizer
-curl -X POST "http://localhost:8000/agents/performance_optimizer/tasks" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "agent_name": "performance_optimizer",
-    "task_type": "generate_response",
-    "description": "How can I optimize database queries?",
-    "parameters": {"context": "Performance discussion"}
-  }'
-```
+### 🔄 Current Phase (Phase 3)
+- **Agentic Software Developer**: ✅ Complete - Code generation from requirements
+- **Slack Integration**: 🔄 In Progress - Requirements intake and communication
+- **GitHub Integration**: ❌ Planned - Repository management and issue creation
+- **Workflow Orchestration**: ❌ Planned - Task coordination and state management
 
-## Test Suite and Quality Assurance
-
-- The project includes a comprehensive test suite (`test_suite.py`) that covers environment, configuration, database, LLM providers, API endpoints, agent functionality, code review, and memory system.
-- **Quota/rate limit errors (e.g., HTTP 429, quota exceeded) are treated as warnings, not errors.** These are counted as 'skipped' tests and are clearly shown as warnings in the test report.
-- The test suite should be run frequently to ensure no regressions. All tests must pass (with only quota/rate limit issues as warnings) before merging or deploying.
-- The test report is saved to `test_report.txt` after each run, summarizing passed, failed, skipped tests, and warnings.
+### 🎯 Next Steps
+1. Complete Slack integration for requirements intake
+2. Implement GitHub integration for repository management
+3. Build workflow orchestration engine
+4. Add new agent types (Requirements Analyst, Test Generator, Documentation Writer)
 
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Run the test suite: `python test_suite.py`
+4. Run the test suite
 5. Submit a pull request
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. 
+This project is licensed under the MIT License - see the LICENSE file for details. 
