@@ -3,179 +3,224 @@ Configuration management for the multi-agent system.
 """
 
 import os
-from pathlib import Path
-from typing import Dict, Any, List, Optional
 import yaml
-from pydantic import BaseModel
-from dotenv import load_dotenv
-
-from .models import AgentConfig
-
-# Load environment variables from .env file
-load_dotenv()
-
-
-class DatabaseConfig(BaseModel):
-    """Database configuration."""
-    type: str = os.getenv("DATABASE_TYPE", "sqlite")
-    path: str = os.getenv("DATABASE_PATH", "./database/agents.db")
-    backup_enabled: bool = os.getenv("DATABASE_BACKUP_ENABLED", "true").lower() == "true"
-    backup_interval: int = int(os.getenv("DATABASE_BACKUP_INTERVAL", "3600"))
-
-
-class APIConfig(BaseModel):
-    """API configuration."""
-    host: str = os.getenv("API_HOST", "0.0.0.0")
-    port: int = int(os.getenv("API_PORT", "8000"))
-    workers: int = int(os.getenv("API_WORKERS", "4"))
-    timeout: int = int(os.getenv("API_TIMEOUT", "30"))
-
-
-class LoggingConfig(BaseModel):
-    """Logging configuration."""
-    level: str = os.getenv("LOG_LEVEL", "INFO")
-    format: str = os.getenv("LOG_FORMAT", "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    file: str = os.getenv("LOG_FILE", "./logs/app.log")
-    max_size: int = int(os.getenv("LOG_MAX_SIZE", "10485760"))
-    backup_count: int = int(os.getenv("LOG_BACKUP_COUNT", "5"))
+from typing import List, Optional
+from pydantic import BaseModel, Field
 
 
 class AppConfig(BaseModel):
     """Application configuration."""
-    name: str = os.getenv("APP_NAME", "Multi-Agent Software Development System")
-    version: str = os.getenv("APP_VERSION", "1.0.0")
-    debug: bool = os.getenv("APP_DEBUG", "false").lower() == "true"
-    log_level: str = os.getenv("APP_LOG_LEVEL", "INFO")
+    name: str = "Multi-Agent Software Development System"
+    version: str = "1.0.0"
+    debug: bool = True
+    log_level: str = "INFO"
 
 
-class IntegrationConfig(BaseModel):
-    """Integration configuration."""
-    slack: Dict[str, Any] = {
-        "enabled": os.getenv("SLACK_ENABLED", "false").lower() == "true",
-        "bot_token": os.getenv("SLACK_BOT_TOKEN", ""),
-        "webhook_url": os.getenv("SLACK_WEBHOOK_URL", ""),
-        "channels": os.getenv("SLACK_CHANNELS", "").split(",") if os.getenv("SLACK_CHANNELS") else []
-    }
-    github: Dict[str, Any] = {
-        "enabled": os.getenv("GITHUB_ENABLED", "false").lower() == "true",
-        "access_token": os.getenv("GITHUB_ACCESS_TOKEN", ""),
-        "webhook_secret": os.getenv("GITHUB_WEBHOOK_SECRET", ""),
-        "repositories": os.getenv("GITHUB_REPOSITORIES", "").split(",") if os.getenv("GITHUB_REPOSITORIES") else []
-    }
+class DatabaseConfig(BaseModel):
+    """Database configuration."""
+    type: str = "sqlite"
+    path: str = "./database/agents.db"
+    backup_enabled: bool = True
+    backup_interval: int = 3600  # seconds
 
 
-class AIModelConfig(BaseModel):
-    """AI model configuration."""
-    openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
-    anthropic_api_key: str = os.getenv("ANTHROPIC_API_KEY", "")
-    default_model: str = os.getenv("DEFAULT_MODEL", "gpt-4")
+class APIConfig(BaseModel):
+    """API configuration."""
+    host: str = "0.0.0.0"
+    port: int = 8000
+    workers: int = 4
+    timeout: int = 30
 
 
-class SecurityConfig(BaseModel):
-    """Security configuration."""
-    secret_key: str = os.getenv("SECRET_KEY", "change-this-in-production")
-    environment: str = os.getenv("ENVIRONMENT", "development")
+class LLMConfig(BaseModel):
+    """LLM configuration for an agent."""
+    llm_provider: str = "openai"  # ollama, openai, claude, gemini
+    llm_deployment: str = "cloud"  # local, cloud
+    llm_model: str = "gpt-4"  # Specific model name
+    llm_api_key: Optional[str] = None  # Set via environment variable
+    llm_base_url: Optional[str] = None  # Custom base URL (e.g., for local Ollama)
+
+
+class AgentConfig(BaseModel):
+    """Agent configuration."""
+    name: str
+    model: str
+    personality: str
+    job_description: str
+    system_prompt: str
+    goal: str
+    enabled: bool = True
+    memory_enabled: bool = True
+    max_context_length: int = 4000
+    llm_config: Optional[LLMConfig] = None
+
+
+class SlackConfig(BaseModel):
+    """Slack integration configuration."""
+    enabled: bool = False
+    bot_token: str = ""
+    webhook_url: str = ""
+    channels: List[str] = Field(default_factory=list)
+    app_token: Optional[str] = None  # For socket mode (future use)
+
+
+class GitHubConfig(BaseModel):
+    """GitHub integration configuration."""
+    enabled: bool = False
+    access_token: str = ""
+    webhook_secret: str = ""
+    repositories: List[str] = Field(default_factory=list)
+
+
+class IntegrationsConfig(BaseModel):
+    """Integrations configuration."""
+    slack: SlackConfig = SlackConfig()
+    github: GitHubConfig = GitHubConfig()
+
+
+class LoggingConfig(BaseModel):
+    """Logging configuration."""
+    level: str = "INFO"
+    format: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    file: str = "./logs/app.log"
+    max_size: int = 10485760  # 10MB
+    backup_count: int = 5
 
 
 class Config(BaseModel):
-    """Main configuration class."""
-    app: AppConfig
-    database: DatabaseConfig
-    api: APIConfig
-    agents: List[AgentConfig]
-    integrations: IntegrationConfig
-    logging: LoggingConfig
-    ai_models: AIModelConfig
-    security: SecurityConfig
+    """Main configuration."""
+    app: AppConfig = AppConfig()
+    database: DatabaseConfig = DatabaseConfig()
+    api: APIConfig = APIConfig()
+    agents: List[AgentConfig] = Field(default_factory=list)
+    integrations: IntegrationsConfig = IntegrationsConfig()
+    logging: LoggingConfig = LoggingConfig()
 
 
-class ConfigManager:
-    """Configuration manager for the multi-agent system."""
+def load_config_from_env() -> Config:
+    """Load configuration from environment variables."""
+    config = Config()
     
-    def __init__(self, config_path: str = "config.yaml"):
-        self.config_path = Path(config_path)
-        self._config: Optional[Config] = None
+    # App configuration
+    config.app.name = os.getenv("APP_NAME", config.app.name)
+    config.app.version = os.getenv("APP_VERSION", config.app.version)
+    config.app.debug = os.getenv("APP_DEBUG", "true").lower() == "true"
+    config.app.log_level = os.getenv("APP_LOG_LEVEL", config.app.log_level)
     
-    def load_config(self) -> Config:
-        """Load configuration from YAML file and environment variables."""
-        if not self.config_path.exists():
-            raise FileNotFoundError(f"Configuration file not found: {self.config_path}")
+    # Database configuration
+    config.database.type = os.getenv("DATABASE_TYPE", config.database.type)
+    config.database.path = os.getenv("DATABASE_PATH", config.database.path)
+    config.database.backup_enabled = os.getenv("DATABASE_BACKUP_ENABLED", "true").lower() == "true"
+    config.database.backup_interval = int(os.getenv("DATABASE_BACKUP_INTERVAL", str(config.database.backup_interval)))
+    
+    # API configuration
+    config.api.host = os.getenv("API_HOST", config.api.host)
+    config.api.port = int(os.getenv("API_PORT", str(config.api.port)))
+    config.api.workers = int(os.getenv("API_WORKERS", str(config.api.workers)))
+    config.api.timeout = int(os.getenv("API_TIMEOUT", str(config.api.timeout)))
+    
+    # Logging configuration
+    config.logging.level = os.getenv("LOG_LEVEL", config.logging.level)
+    config.logging.format = os.getenv("LOG_FORMAT", config.logging.format)
+    config.logging.file = os.getenv("LOG_FILE", config.logging.file)
+    config.logging.max_size = int(os.getenv("LOG_MAX_SIZE", str(config.logging.max_size)))
+    config.logging.backup_count = int(os.getenv("LOG_BACKUP_COUNT", str(config.logging.backup_count)))
+    
+    # Slack integration
+    config.integrations.slack.enabled = os.getenv("SLACK_ENABLED", "false").lower() == "true"
+    config.integrations.slack.bot_token = os.getenv("SLACK_BOT_TOKEN", "")
+    config.integrations.slack.webhook_url = os.getenv("SLACK_WEBHOOK_URL", "")
+    config.integrations.slack.app_token = os.getenv("SLACK_APP_TOKEN", "")
+    
+    # Parse channels from comma-separated string
+    channels_str = os.getenv("SLACK_CHANNELS", "")
+    if channels_str:
+        config.integrations.slack.channels = [channel.strip() for channel in channels_str.split(",") if channel.strip()]
+    
+    # GitHub integration
+    config.integrations.github.enabled = os.getenv("GITHUB_ENABLED", "false").lower() == "true"
+    config.integrations.github.access_token = os.getenv("GITHUB_ACCESS_TOKEN", "")
+    config.integrations.github.webhook_secret = os.getenv("GITHUB_WEBHOOK_SECRET", "")
+    
+    # Parse repositories from comma-separated string
+    repos_str = os.getenv("GITHUB_REPOSITORIES", "")
+    if repos_str:
+        config.integrations.github.repositories = [repo.strip() for repo in repos_str.split(",") if repo.strip()]
+    
+    return config
+
+
+def load_config_from_yaml() -> Config:
+    """Load configuration from YAML file."""
+    config_path = "config.yaml"
+    
+    if not os.path.exists(config_path):
+        raise FileNotFoundError(f"Configuration file not found: {config_path}")
+    
+    with open(config_path, 'r') as file:
+        yaml_data = yaml.safe_load(file)
+    
+    # Load base configuration from YAML
+    config = Config(**yaml_data)
+    
+    # Override with environment variables
+    env_config = load_config_from_env()
+    
+    # Merge configurations (environment variables take precedence)
+    config.app = env_config.app
+    config.database = env_config.database
+    config.api = env_config.api
+    config.logging = env_config.logging
+    config.integrations = env_config.integrations
+    
+    # Process agent configurations
+    for i, agent in enumerate(config.agents):
+        # Set LLM configuration from environment if not specified
+        if not agent.llm_config:
+            agent.llm_config = LLMConfig()
         
-        with open(self.config_path, 'r') as f:
-            config_data = yaml.safe_load(f)
+        # Override with environment variables for default LLM settings
+        default_provider = os.getenv("DEFAULT_LLM_PROVIDER", "openai")
+        default_deployment = os.getenv("DEFAULT_LLM_DEPLOYMENT", "cloud")
+        default_model = os.getenv("DEFAULT_LLM_MODEL", "gpt-4")
+        ollama_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
         
-        # Add environment-based configurations
-        config_data["ai_models"] = {}
-        config_data["security"] = {}
-        
-        self._config = Config(**config_data)
-        return self._config
+        # Set default values if not specified
+        if not agent.llm_config.llm_provider:
+            agent.llm_config.llm_provider = default_provider
+        if not agent.llm_config.llm_deployment:
+            agent.llm_config.llm_deployment = default_deployment
+        if not agent.llm_config.llm_model:
+            agent.llm_config.llm_model = default_model
+        if agent.llm_config.llm_provider == "ollama" and not agent.llm_config.llm_base_url:
+            agent.llm_config.llm_base_url = ollama_url
     
-    def get_config(self) -> Config:
-        """Get the current configuration."""
-        if self._config is None:
-            self._config = self.load_config()
-        return self._config
-    
-    def get_agent_config(self, agent_name: str) -> Optional[AgentConfig]:
-        """Get configuration for a specific agent."""
-        config = self.get_config()
-        for agent in config.agents:
-            if agent.name == agent_name:
-                # Set default LLM model if not specified
-                if agent.llm_model is None:
-                    agent.llm_model = agent.model
-                
-                # Set API keys from environment if not specified
-                if agent.llm_api_key is None:
-                    if agent.llm_provider == "openai":
-                        agent.llm_api_key = get_openai_api_key()
-                    elif agent.llm_provider == "claude":
-                        agent.llm_api_key = get_anthropic_api_key()
-                    elif agent.llm_provider == "gemini":
-                        agent.llm_api_key = os.getenv("GOOGLE_API_KEY", "")
-                
-                return agent
-        return None
-    
-    def get_enabled_agents(self) -> List[AgentConfig]:
-        """Get all enabled agents."""
-        config = self.get_config()
-        return [agent for agent in config.agents if agent.enabled]
-    
-    def reload_config(self) -> Config:
-        """Reload configuration from file."""
-        self._config = None
-        return self.load_config()
+    return config
 
 
 # Global configuration instance
-config_manager = ConfigManager()
+_config: Optional[Config] = None
 
 
 def get_config() -> Config:
-    """Get the global configuration."""
-    return config_manager.get_config()
+    """Get the global configuration instance."""
+    global _config
+    
+    if _config is None:
+        try:
+            _config = load_config_from_yaml()
+        except FileNotFoundError:
+            # Fallback to environment-only configuration
+            _config = load_config_from_env()
+    
+    return _config
 
 
-def get_agent_config(agent_name: str) -> Optional[AgentConfig]:
-    """Get configuration for a specific agent."""
-    return config_manager.get_agent_config(agent_name)
-
-
-def get_enabled_agents() -> List[AgentConfig]:
-    """Get all enabled agents."""
-    return config_manager.get_enabled_agents()
-
-
-def get_ai_model_config() -> AIModelConfig:
-    """Get AI model configuration."""
-    return config_manager.get_config().ai_models
-
-
-def get_security_config() -> SecurityConfig:
-    """Get security configuration."""
-    return config_manager.get_config().security
+def reload_config():
+    """Reload the configuration."""
+    global _config
+    _config = None
+    return get_config()
 
 
 def get_openai_api_key() -> str:
@@ -188,12 +233,34 @@ def get_anthropic_api_key() -> str:
     return os.getenv("ANTHROPIC_API_KEY", "")
 
 
-def validate_environment() -> Dict[str, bool]:
-    """Validate that required environment variables are set."""
-    validation = {
-        "openai_api_key": bool(get_openai_api_key()),
-        "anthropic_api_key": bool(get_anthropic_api_key()),
-        "secret_key": bool(os.getenv("SECRET_KEY")),
-        "environment": bool(os.getenv("ENVIRONMENT"))
-    }
-    return validation 
+def get_google_api_key() -> str:
+    """Get Google API key from environment."""
+    return os.getenv("GOOGLE_API_KEY", "")
+
+
+def get_agent_config(agent_name: str) -> Optional[AgentConfig]:
+    """Get configuration for a specific agent."""
+    config = get_config()
+    for agent in config.agents:
+        if agent.name == agent_name:
+            # Set LLM configuration from environment if not specified
+            if not agent.llm_config:
+                agent.llm_config = LLMConfig()
+            
+            # Set API keys from environment if not specified
+            if agent.llm_config.llm_api_key is None:
+                if agent.llm_config.llm_provider == "openai":
+                    agent.llm_config.llm_api_key = get_openai_api_key()
+                elif agent.llm_config.llm_provider == "claude":
+                    agent.llm_config.llm_api_key = get_anthropic_api_key()
+                elif agent.llm_config.llm_provider == "gemini":
+                    agent.llm_config.llm_api_key = get_google_api_key()
+            
+            return agent
+    return None
+
+
+def get_enabled_agents() -> List[AgentConfig]:
+    """Get all enabled agents."""
+    config = get_config()
+    return [agent for agent in config.agents if agent.enabled] 

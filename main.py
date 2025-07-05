@@ -373,6 +373,23 @@ async def get_slack_status():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/integrations/slack/test")
+async def test_slack_connection():
+    """Test Slack connection and return detailed status."""
+    try:
+        if not slack_manager:
+            raise HTTPException(status_code=503, detail="Slack integration not available")
+        
+        result = await slack_manager.test_connection()
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to test Slack connection: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/integrations/slack/send")
 async def send_slack_message(channel: str, message: str, thread_ts: str = None):
     """Send a message to a Slack channel."""
@@ -391,6 +408,115 @@ async def send_slack_message(channel: str, message: str, thread_ts: str = None):
         raise
     except Exception as e:
         logger.error(f"Failed to send Slack message: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/integrations/slack/broadcast")
+async def broadcast_slack_message(message: str):
+    """Send a message to all configured Slack channels."""
+    try:
+        if not slack_manager:
+            raise HTTPException(status_code=503, detail="Slack integration not available")
+        
+        results = await slack_manager.send_message_to_all_channels(message)
+        
+        return {
+            "success": True,
+            "message": "Message broadcast to all channels",
+            "results": results
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to broadcast Slack message: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/integrations/slack/webhook")
+async def process_slack_webhook(event_data: Dict[str, Any]):
+    """Process incoming Slack webhook events."""
+    try:
+        if not slack_manager:
+            raise HTTPException(status_code=503, detail="Slack integration not available")
+        
+        # Process the webhook event
+        await slack_manager.process_webhook_event(event_data)
+        
+        return {"success": True, "message": "Webhook processed successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to process Slack webhook: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/integrations/slack/channels")
+async def list_slack_channels():
+    """List all Slack channels the bot has access to."""
+    try:
+        if not slack_manager:
+            raise HTTPException(status_code=503, detail="Slack integration not available")
+        
+        channels = await slack_manager.list_channels()
+        
+        return {
+            "success": True,
+            "channels": channels,
+            "count": len(channels)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to list Slack channels: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/integrations/slack/channels/{channel_id}")
+async def get_slack_channel_info(channel_id: str):
+    """Get information about a specific Slack channel."""
+    try:
+        if not slack_manager:
+            raise HTTPException(status_code=503, detail="Slack integration not available")
+        
+        channel_info = await slack_manager.get_channel_info(channel_id)
+        
+        if not channel_info:
+            raise HTTPException(status_code=404, detail="Channel not found")
+        
+        return {
+            "success": True,
+            "channel": channel_info
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get Slack channel info: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/integrations/slack/notify")
+async def send_slack_notification(message: str, level: str = "info"):
+    """Send a system notification to all Slack channels."""
+    try:
+        if not slack_manager:
+            raise HTTPException(status_code=503, detail="Slack integration not available")
+        
+        await slack_manager.send_system_notification(message, level)
+        
+        return {
+            "success": True,
+            "message": "System notification sent to all channels",
+            "level": level
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to send Slack notification: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
